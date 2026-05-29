@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Arena Vôlei Club</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    <link rel="apple-touch-icon" href="icone.png">
+    <style>
+        /* ================= ESTILOS GERAIS ================= */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121212; color: white; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Menu Lateral */
+        .sidebar { width: 85px; background: #1a1a1a; display: flex; flex-direction: column; align-items: center; padding-top: 20px; border-right: 1px solid #333; z-index: 10; overflow-y: auto; }
+        .menu-btn { background: none; border: none; color: gray; font-size: 10px; font-weight: bold; margin-bottom: 25px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%; }
+        .menu-btn.active { color: #ffb300; }
+        .menu-btn svg { width: 28px; height: 28px; fill: currentColor; }
+
+        /* ÁREA PRINCIPAL */
+        .main-content { flex: 1; position: relative; overflow-y: auto; }
+        .tela { display: none; height: 100%; width: 100%; padding: 20px; flex-direction: column; }
+        .tela.ativa { display: flex; }
+
+        /* ================= TELA DO PLACAR ================= */
+        .placar-container { display: flex; flex: 1; justify-content: center; align-items: center; height: 100%; position: relative; }
+        .time-box { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .divisor { width: 2px; background: rgba(255,255,255,0.1); height: 80%; }
+        .nome-time { font-size: 40px; font-weight: bold; text-transform: uppercase; border: none; background: transparent; text-align: center; width: 80%; cursor: pointer; }
+        .nome-time.time-a { color: #448aff; } .nome-time.time-b { color: #ff9100; }
+        .nome-time:focus { outline: none; border-bottom: 2px solid currentColor; }
+        .numero-placar { font-size: 180px; font-weight: 900; cursor: pointer; user-select: none; line-height: 1; }
+        .botoes-placar { display: flex; gap: 30px; margin-top: 10px; }
+        .btn-acao { background: none; border: none; font-size: 50px; cursor: pointer; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
+        .btn-sub { color: #ff5252; } .btn-add { color: #69f0ae; background: rgba(105, 240, 174, 0.1); }
+        .btn-finalizar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #d32f2f; color: white; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+
+        /* ================= COMPONENTES COMPARTILHADOS ================= */
+        .header-padrao { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;}
+        .painel-superior { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        .painel-superior label { font-weight: bold; font-size: 16px; }
+        .painel-superior input, .painel-superior select, .painel-superior button { background: #2a2a2a; color: white; padding: 10px; border-radius: 5px; border: none; font-weight: bold; font-size: 14px; }
+        .btn-destaque { background: #ffb300; color: black; cursor: pointer; }
+        
+        /* ================= TELA PLANTEL ================= */
+        .formulario { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
+        .btn-foto { background: #333; color: white; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; border: 1px solid #555; display: flex; align-items: center; gap: 5px; }
+        .grid-cartas { display: flex; flex-wrap: wrap; gap: 15px; padding-bottom: 20px; }
+        .carta { width: 140px; height: 210px; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 3px 3px 15px rgba(0,0,0,0.5); position: relative; }
+        .carta-5 { background: linear-gradient(135deg, #FBC02D, #FFF59D, #F57F17); color: black; }
+        .carta-4 { background: linear-gradient(135deg, #9E9E9E, #E0E0E0, #616161); color: black; }
+        .carta-3 { background: linear-gradient(135deg, #8D6E63, #D7CCC8, #5D4037); color: white; }
+        .carta-1-2 { background: linear-gradient(135deg, #37474F, #455A64); color: rgba(255,255,255,0.7); }
+        .carta-header { display: flex; justify-content: space-between; font-size: 26px; font-weight: 900; }
+        .numero-carta { cursor: pointer; padding: 0 4px; border-radius: 4px; }
+        .numero-carta:hover { background: rgba(255,255,255,0.3); }
+        .carta-avatar { display: flex; justify-content: center; align-items: center; height: 75px; font-size: 50px; opacity: 0.9; }
+        .carta-avatar img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(0,0,0,0.2); box-shadow: 0 4px 8px rgba(0,0,0,0.3); background-color: #fff;}
+        .carta-footer { background: rgba(0,0,0,0.2); border-radius: 5px; padding: 5px; text-align: center; }
+        .carta-nome { font-size: 13px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .carta-estrelas { color: #ffb300; font-size: 10px; letter-spacing: 2px; }
+        .btn-deletar { position: absolute; top: -8px; right: -8px; background: #e53935; color: white; border: none; border-radius: 50%; width: 26px; height: 26px; font-weight: bold; cursor: pointer; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .carta:hover .btn-deletar { display: flex; align-items: center; justify-content: center; }
+
+        /* ================= TELAS SORTEIO & FINANCEIRO (Grids) ================= */
+        .selecao-grid { display: flex; flex-wrap: wrap; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px; margin-bottom: 20px; }
+        .mini-carta { background: #2a2a2a; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 10px; cursor: pointer; border: 2px solid transparent; width: 200px; transition: 0.2s; user-select: none; }
+        .mini-carta.selecionada { border-color: #69f0ae; background: rgba(105, 240, 174, 0.1); }
+        .mini-foto { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #555; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .mini-info h4 { font-size: 14px; text-transform: uppercase; margin: 0; }
+        .mini-info p { font-size: 12px; color: #aaa; margin: 0; }
+        
+        .resultado-grid { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+        .time-card { background: #1e1e1e; border-radius: 10px; border-top: 5px solid #ffb300; width: 220px; padding: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
+        .time-card h3 { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .time-jogador { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; font-weight: bold; text-transform: uppercase; }
+        .time-jogador .ovr { color: #ffb300; }
+        .reserva-card { border-top-color: #ff5252; opacity: 0.8; }
+
+        .btn-sortear { background: #448aff; color: white; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; transition: 0.2s; }
+        .btn-sortear:hover { background: #2979ff; }
+
+        /* ================= TELA FINANCEIRO ================= */
+        .painel-financeiro { background: #1b5e20; border: 1px solid #2e7d32; }
+        .box-valor { background: rgba(0,0,0,0.3); padding: 10px 15px; border-radius: 8px; text-align: right; margin-left: auto; }
+        .check-pago { width: 24px; height: 24px; border-radius: 4px; border: 2px solid #69f0ae; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; transition: 0.2s; margin-left: auto; }
+        .mini-carta.selecionada .check-pago { background: #69f0ae; color: #121212; }
+
+        /* ================= TELA DE HISTÓRICO ================= */
+        .historico-lista { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-bottom: 20px; }
+        .historico-item { background: #1e1e1e; padding: 15px; border-radius: 10px; display: flex; flex-direction: column; border-left: 5px solid #ffb300; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .hist-data { font-size: 12px; color: gray; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .hist-placar { font-size: 24px; font-weight: bold; display: flex; align-items: center; gap: 15px; }
+        .vencedor { color: #69f0ae; }
+        .perdedor { color: #ff5252; }
+        .empate { color: #fff; }
+        .btn-excluir-hist { align-self: flex-end; background: none; border: none; color: #ff5252; cursor: pointer; font-size: 12px; margin-top: 5px; opacity: 0.6; }
+        .btn-excluir-hist:hover { opacity: 1; text-decoration: underline; }
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <button class="menu-btn active" onclick="mudarAba('placar', this)">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v-2H4v6h2v-2h2v2h2v-2h2v2h2v-2h2v-2h-2v2h-2v-3z"/></svg>Placar
+        </button>
+        <button class="menu-btn" onclick="mudarAba('plantel', this)">
+            <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>Plantel
+        </button>
+        <button class="menu-btn" onclick="mudarAba('sorteio', this); carregarListaSorteio();">
+            <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>Sorteio
+        </button>
+        <button class="menu-btn" onclick="mudarAba('financeiro', this); carregarListaFinanceiro();">
+            <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>Caixa
+        </button>
+        <button class="menu-btn" onclick="mudarAba('historico', this); carregarHistorico();">
+            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>Histórico
+        </button>
+    </div>
+
+    <div class="main-content">
+        
+        <div id="tela-placar" class="tela ativa">
+            <div class="placar-container">
+                <div class="time-box">
+                    <input type="text" class="nome-time time-a" id="nomeTimeA" value="TIME A">
+                    <div class="numero-placar" id="pontosA" onclick="add('A')">00</div>
+                    <div class="botoes-placar"><button class="btn-acao btn-sub" onclick="sub('A')">⊖</button><button class="btn-acao btn-add" onclick="add('A')">⊕</button></div>
+                </div>
+                <div class="divisor"></div>
+                <div class="time-box">
+                    <input type="text" class="nome-time time-b" id="nomeTimeB" value="TIME B">
+                    <div class="numero-placar" id="pontosB" onclick="add('B')">00</div>
+                    <div class="botoes-placar"><button class="btn-acao btn-sub" onclick="sub('B')">⊖</button><button class="btn-acao btn-add" onclick="add('B')">⊕</button></div>
+                </div>
+                <button class="btn-finalizar" onclick="finalizarPartida()">🏐 FINALIZAR PARTIDA</button>
+            </div>
+        </div>
+
+        <div id="tela-plantel" class="tela">
+            <div class="header-padrao">
+                <h2 style="color: #ffb300; margin-top: 10px;">MEU PLANTEL</h2>
+                <div class="painel-superior formulario" style="margin-bottom: 0;">
+                    <input type="text" id="nomeJogador" placeholder="Nome" autocomplete="off" style="width: 130px;">
+                    <input type="number" id="numeroOverall" placeholder="Nº (Ex: 85)" min="1" max="99" style="width: 100px;">
+                    <select id="estrelasJogador">
+                        <option value="5">5 Estrelas</option><option value="4">4 Estrelas</option><option value="3">3 Estrelas</option><option value="2">2 Estrelas</option><option value="1">1 Estrela</option>
+                    </select>
+                    <label class="btn-foto" for="fotoJogador" id="labelFoto">📷 Foto</label>
+                    <input type="file" id="fotoJogador" accept="image/*" style="display: none;" onchange="atualizarLabelFoto()">
+                    <button class="btn-destaque" onclick="processarFormulario()">GERAR CARTA</button>
+                </div>
+            </div>
+            <div class="grid-cartas" id="listaCartas"></div>
+        </div>
+
+        <div id="tela-sorteio" class="tela">
+            <h2 style="color: #69f0ae; margin-bottom: 15px;">SORTEIO EQUILIBRADO</h2>
+            <div class="painel-superior">
+                <label>Jogadores por Time:</label>
+                <input type="number" id="qtdPorTime" value="2" min="1" max="6" style="width: 70px; text-align: center;">
+                <button class="btn-sortear" onclick="sortearTimes()">🎲 GERAR TIMES</button>
+                <span style="color: gray; font-size: 14px; margin-left: auto;">* Selecione abaixo quem vai jogar.</span>
+            </div>
+            <div class="selecao-grid" id="listaSorteio"></div>
+            <hr style="border: 1px solid #333; margin: 10px 0 20px 0;">
+            <div class="resultado-grid" id="resultadoSorteio"></div>
+        </div>
+
+        <div id="tela-financeiro" class="tela">
+            <h2 style="color: #a5d6a7; margin-bottom: 15px;">CONTROLE FINANCEIRO (RATEIO)</h2>
+            <div class="painel-superior painel-financeiro">
+                <label>Valor Total da Quadra (R$):</label>
+                <input type="number" id="valorTotalQuadra" placeholder="Ex: 120" oninput="calcularRateio()" style="width: 120px;">
+                <div class="box-valor">
+                    <span style="font-size: 12px; color: #a5d6a7; text-transform: uppercase;">Pix por Pessoa:</span><br>
+                    <span id="valorPorPessoa" style="font-size: 28px; font-weight: black; color: white;">R$ 0,00</span>
+                </div>
+            </div>
+            <h3 style="margin: 5px 0 15px 0; font-size: 16px; color: #ccc;">Selecione os jogadores presentes no rachão:</h3>
+            <div class="selecao-grid" id="listaFinanceiro" style="max-height: 50vh;"></div>
+        </div>
+
+        <div id="tela-historico" class="tela">
+            <h2 style="color: #ffb300; margin-bottom: 15px;">HISTÓRICO DE PARTIDAS</h2>
+            <div class="historico-lista" id="listaHistorico"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Navegação ---
+        function mudarAba(idTela, btnClicado) {
+            document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+            document.getElementById('tela-' + idTela).classList.add('ativa');
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+            btnClicado.classList.add('active');
+        }
+
+        // --- Placar e Salvar Histórico ---
+        let ptsA = 0; let ptsB = 0;
+        function formatarPonto(num) { return num < 10 ? '0' + num : num; }
+        function atualizarPlacar() {
+            document.getElementById('pontosA').innerText = formatarPonto(ptsA);
+            document.getElementById('pontosB').innerText = formatarPonto(ptsB);
+        }
+        function add(t) { t === 'A' ? ptsA++ : ptsB++; atualizarPlacar(); }
+        function sub(t) { t === 'A' && ptsA > 0 ? ptsA-- : t === 'B' && ptsB > 0 ? ptsB-- : null; atualizarPlacar(); }
+        
+        function finalizarPartida() {
+            if(confirm("Deseja finalizar a partida e salvar o placar no histórico?")) {
+                const historico = JSON.parse(localStorage.getItem('historicoVoleiDb')) || [];
+                const nomeA = document.getElementById('nomeTimeA').value || 'TIME A';
+                const nomeB = document.getElementById('nomeTimeB').value || 'TIME B';
+
+                const novaPartida = {
+                    id: Date.now(),
+                    data: new Date().toLocaleString('pt-BR'),
+                    nomeA: nomeA,
+                    ptsA: ptsA,
+                    nomeB: nomeB,
+                    ptsB: ptsB
+                };
+
+                historico.unshift(novaPartida); // Salva no começo do array (mais recentes primeiro)
+                localStorage.setItem('historicoVoleiDb', JSON.stringify(historico));
+
+                ptsA = 0; ptsB = 0; atualizarPlacar();
+                alert("Partida salva com sucesso!");
+            }
+        }
+
+        // --- Ultimate Team (Plantel) ---
+        function atualizarLabelFoto() {
+            const fileInput = document.getElementById('fotoJogador');
+            const label = document.getElementById('labelFoto');
+            if(fileInput.files.length > 0) {
+                label.innerHTML = '✅ Pronta'; label.style.background = '#2e7d32'; label.style.borderColor = '#1b5e20';
+            } else {
+                label.innerHTML = '📷 Foto'; label.style.background = '#333'; label.style.borderColor = '#555';
+            }
+        }
+
+        function processarFormulario() {
+            const nome = document.getElementById('nomeJogador').value.trim();
+            const estrelas = parseInt(document.getElementById('estrelasJogador').value);
+            let overall = document.getElementById('numeroOverall').value;
+
+            if (!nome) { alert("Nome vazio!"); return; }
+            if (!overall) overall = (estrelas == 5 ? 94 : estrelas == 4 ? 84 : estrelas == 3 ? 74 : estrelas == 2 ? 62 : 50);
+            else overall = parseInt(overall);
+
+            const fileInput = document.getElementById('fotoJogador');
+            if (fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) { salvarJogador(nome, estrelas, overall, e.target.result); };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                salvarJogador(nome, estrelas, overall, '');
+            }
+        }
+
+        function salvarJogador(nome, estrelas, overall, fotoUrl) {
+            const jogadores = JSON.parse(localStorage.getItem('arenaVoleiDb')) || [];
+            jogadores.push({ nome, estrelas, overall, fotoUrl, id: Date.now() });
+            jogadores.sort((a, b) => b.estrelas - a.estrelas);
+            localStorage.setItem('arenaVoleiDb', JSON.stringify(jogadores));
+
+            document.getElementById('nomeJogador').value = ''; document.getElementById('numeroOverall').value = ''; document.getElementById('fotoJogador').value = '';
+            atualizarLabelFoto(); carregarCartas(); 
+        }
+
+        function carregarCartas() {
+            const lista = document.getElementById('listaCartas');
+            lista.innerHTML = ''; 
+            const jogadores = JSON.parse(localStorage.getItem('arenaVoleiDb')) || [];
+
+            jogadores.forEach((jog, index) => {
+                let classeCarta = jog.estrelas == 5 ? 'carta-5' : jog.estrelas == 4 ? 'carta-4' : jog.estrelas == 3 ? 'carta-3' : 'carta-1-2';
+                let estrelasIcon = '★'.repeat(jog.estrelas);
+                let avatarHtml = jog.fotoUrl ? `<img src="${jog.fotoUrl}">` : `👤`;
+
+                lista.innerHTML += `
+                    <div class="carta ${classeCarta}">
+                        <button class="btn-deletar" onclick="deletarJogador(${index})">X</button>
+                        <div class="carta-header"><span class="numero-carta" onclick="editarNumero(${index})">${jog.overall}</span><span style="font-size: 16px;">🏐</span></div>
+                        <div class="carta-avatar">${avatarHtml}</div>
+                        <div class="carta-footer"><div class="carta-nome">${jog.nome}</div><div class="carta-estrelas">${estrelasIcon}</div></div>
+                    </div>
+                `;
+            });
+        }
+
+        function editarNumero(index) {
+            const jogadores = JSON.parse(localStorage.getItem('arenaVoleiDb')) || [];
+            let novoNumero = prompt(`Novo Overall para ${jogadores[index].nome}:`, jogadores[index].overall);
+            if(novoNumero && novoNumero.trim() !== "") {
+                jogadores[index].overall = parseInt(novoNumero);
+                localStorage.setItem('arenaVoleiDb', JSON.stringify(jogadores)); carregarCartas();
+            }
+        }
+
+        function deletarJogador(index) {
+            if(confirm("Remover carta?")) {
+                const jogadores = JSON.parse(localStorage.getItem('arenaVoleiDb')) || [];
+                jogadores.splice(index, 1);
+                localStorage.setItem('arenaVoleiDb', JSON.stringify(jogadores)); carregarCartas();
+            }
+        }
+
+        carregarCartas();
+
+        // --- Sorteio ---
+        let jogadoresParaSorteio = []; 
+        function carregarListaSorteio() {
+            const lista = document.getElementById('listaSorteio');
+            lista.innerHTML = '';
+            const jogadoresDb = JSON.parse(localStorage.getItem('arenaVoleiDb')) || [];
+            if (jogadoresDb.length === 0) return lista.innerHTML = "<p style='color: gray;'>Crie jogadores no Plantel primeiro.</p>";
+
+            jogadoresDb.forEach(jog => {
+                let isSelecionado = jogadoresParaSorteio.find(j => j.id === jog.id) ? 'selecionada' : '';
+                let avatarHtml = jog.fotoUrl ? `<img src="${jog.fotoUrl}" class="mini-foto">` : `<div class="mini-foto">👤</div>`;
+                lista.innerHTML += `
+                    <div class="mini-carta ${isSelecionado}" onclick="toggleSelecaoSorteio(this, '${jog.id}')">
+                        ${avatarHtml}
+                        <div class="mini-info"><h4>${jog.nome}</h4><p>Nº: ${jog.overall} | ${'★'.repeat(jog.estrelas)}</p></div>
+                    </div>
+                `;
+            });
+        }
+
+        function toggleSelecaoSorteio(elemento, idStr) {
+            const id = parseInt(idStr);
+            const jogadoresDb = JSON.parse(localStorage.getItem('arenaVoleiDb')) || [];
+            elemento.classList.toggle('selecionada');
+            if (elemento.classList.contains('selecionada')) {
+                const jog = jogadoresDb.find(j => j.id === id);
+                if (jog) jogadoresParaSorteio.push(jog);
+            } else {
+                jogadoresParaSorteio = jogadoresParaSorteio.filter(j => j.id !== id);
+            }
+        }
+
+        function sortearTimes() {
+            const qtdPorTime = parseInt(document.getElementById('qtdPorTime').value);
+            const container = document.getElementById('resultadoSorteio');
+            container.innerHTML = '';
+
+            if (jogadoresParaSorteio.length < qtdPorTime) return alert(`Selecione no mínimo ${qtdPorTime} jogadores!`);
+
+            let disponiveis = [...jogadoresParaSorteio].sort((a, b) => {
+                if (b.estrelas !== a.estrelas) return b.estrelas - a.estrelas; 
+                return b.overall - a.overall;
+            });
+
+            let totalTimes = Math.floor(disponiveis.length / qtdPorTime);
+            let times = Array.from({ length: totalTimes }, () => []);
+            let direcao = 1; let indiceTimeAtual = 0;
+
+            for (let i = 0; i < (totalTimes * qtdPorTime); i++) {
+                times[indiceTimeAtual].push(disponiveis[i]);
+                indiceTimeAtual += direcao;
+                if (indiceTimeAtual >= totalTimes) { indiceTimeAtual = totalTimes - 1; direcao = -1; } 
+                else if (indiceTimeAtual < 0) { indiceTimeAtual = 0; direcao = 1; }
+            }
+
+            let reservas = disponiveis.slice(totalTimes * qtdPorTime);
+
+            times.forEach((time, index) => {
+                let htmlTime = `<div class="time-card"><h3>TIME ${index + 1}</h3>`;
+                time.forEach(jog => { htmlTime += `<div class="time-jogador"><span>${jog.nome}</span><span class="ovr">${'★'.repeat(jog.estrelas)}</span></div>`; });
+                let somaEstrelas = time.reduce((soma, j) => soma + j.estrelas, 0);
+                htmlTime += `<div style="text-align: right; margin-top: 10px; font-size: 12px; color: gray;">Soma Estrelas: ${somaEstrelas}</div></div>`;
+                container.innerHTML += htmlTime;
+            });
+
+            if (reservas.length > 0) {
+                let htmlReserva = `<div class="time-card reserva-card"><h3 style="color: #ff5252;">BANCO / PRÓXIMOS</h3>`;
+                reservas.forEach(jog => { htmlReserva += `<div class="time-jogador"><span style="color: #aaa;">${jog.nome}</span><span class="ovr" style="color: #888;">${'★'.repeat(jog.estrelas)}</span></div>`; });
+                htmlReserva += `</div>`;
+                container.innerHTML += htmlReserva;
+            }
+        }
+
+        // --- Financeiro ---
+        let jogadoresRateio = []; 
+        function carregarListaFinanceiro() {
+            const lista = document.getElementById('listaFinanceiro');
+            lista.innerHTML = '';
+            const jogadoresDb = JSON.parse(localStorage.getItem('arenaVoleiDb')) || [];
+            const disponiveis = [...jogadoresDb].sort((a, b) => a.nome.localeCompare(b.nome));
+
+            if (disponiveis.length === 0) return lista.innerHTML = "<p style='color: gray;'>Crie jogadores no Plantel primeiro.</p>";
+
+            disponiveis.forEach(jog => {
+                let isSelecionado = jogadoresRateio.includes(jog.id);
+                let classeAtiva = isSelecionado ? 'selecionada' : '';
+                let iconeCheck = isSelecionado ? '✓' : '';
+                let avatarHtml = jog.fotoUrl ? `<img src="${jog.fotoUrl}" class="mini-foto">` : `<div class="mini-foto">👤</div>`;
+
+                lista.innerHTML += `
+                    <div class="mini-carta ${classeAtiva}" onclick="toggleFinanceiro(this, ${jog.id})" style="width: 250px; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            ${avatarHtml}
+                            <div class="mini-info"><h4>${jog.nome}</h4></div>
+                        </div>
+                        <div class="check-pago">${iconeCheck}</div>
+                    </div>
+                `;
+            });
+            calcularRateio();
+        }
+
+        function toggleFinanceiro(elemento, id) {
+            if (jogadoresRateio.includes(id)) { jogadoresRateio = jogadoresRateio.filter(jId => jId !== id); } 
+            else { jogadoresRateio.push(id); }
+            carregarListaFinanceiro();
+        }
+
+        function calcularRateio() {
+            const inputValor = document.getElementById('valorTotalQuadra');
+            const spanValor = document.getElementById('valorPorPessoa');
+            let valorTotal = parseFloat(inputValor.value);
+
+            if (isNaN(valorTotal) || valorTotal <= 0 || jogadoresRateio.length === 0) {
+                spanValor.innerText = "R$ 0,00"; return;
+            }
+            let valorPorPessoa = valorTotal / jogadoresRateio.length;
+            spanValor.innerText = "R$ " + valorPorPessoa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // --- Histórico Simplificado ---
+        function carregarHistorico() {
+            const lista = document.getElementById('listaHistorico');
+            const historico = JSON.parse(localStorage.getItem('historicoVoleiDb')) || [];
+
+            if(historico.length === 0) {
+                lista.innerHTML = "<p style='color: gray;'>Nenhuma partida salva no histórico.</p>";
+                return;
+            }
+
+            lista.innerHTML = '';
+            historico.forEach((p, index) => {
+                let classeA = p.ptsA > p.ptsB ? 'vencedor' : p.ptsA < p.ptsB ? 'perdedor' : 'empate';
+                let classeB = p.ptsB > p.ptsA ? 'vencedor' : p.ptsB < p.ptsA ? 'perdedor' : 'empate';
+
+                lista.innerHTML += `
+                    <div class="historico-item">
+                        <div class="hist-data">${p.data}</div>
+                        <div class="hist-placar">
+                            <span class="${classeA}">${p.nomeA} (${p.ptsA})</span> 
+                            <span style="color: gray;">X</span> 
+                            <span class="${classeB}">(${p.ptsB}) ${p.nomeB}</span>
+                        </div>
+                        <button class="btn-excluir-hist" onclick="excluirPartida(${index})">Apagar Registro</button>
+                    </div>
+                `;
+            });
+        }
+
+        function excluirPartida(index) {
+            if(confirm("Apagar esta partida do histórico?")) {
+                const historico = JSON.parse(localStorage.getItem('historicoVoleiDb')) || [];
+                historico.splice(index, 1);
+                localStorage.setItem('historicoVoleiDb', JSON.stringify(historico));
+                carregarHistorico();
+            }
+        }
+
+    </script>
+</body>
+<script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('App pronto para instalar e funcionar offline!', reg))
+                    .catch(err => console.log('Erro no Service Worker:', err));
+            });
+        }
+    </script>
+</html>
